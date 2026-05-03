@@ -5,58 +5,115 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Realistic Globe</title>
     <style>
-        body { margin: 0; }
+        * { margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; }
         canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 14px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
     </style>
 </head>
 <body>
-    <canvas id="globeCanvas"></canvas>
+    <div id="info">Realistic 3D Globe</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        const canvas = document.getElementById('globeCanvas');
-        const gl = canvas.getContext('webgl');
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000);
+        document.body.appendChild(renderer.domElement);
 
-        // Adjust the canvas size
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        camera.position.z = 2.5;
 
-        // Set up lighting and material properties
-        const lightColor = [1.0, 1.0, 1.0]; // White light
-        const ambientLight = [0.1, 0.1, 0.1]; // Low ambient light
-
-        // Load textures for the globe
-        const textureLoader = new TextureLoader();
-        const earthTexture = textureLoader.load('path/to/earth_texture.jpg');
-        const normalMap = textureLoader.load('path/to/normal_map.jpg');
-        const specularMap = textureLoader.load('path/to/specular_map.jpg');
-        const cloudTexture = textureLoader.load('path/to/cloud_texture.png');
-
-        // Create globe geometry
-        const globeGeometry = new SphereGeometry(1, 64, 64);
-        const globeMaterial = new ShaderMaterial({
-            uniforms: {
-                lightColor: { value: new Vector3(...lightColor) },
-                ambientLight: { value: new Vector3(...ambientLight) },
-                earthTexture: { value: earthTexture },
-                normalMap: { value: normalMap },
-                specularMap: { value: specularMap },
-                cloudTexture: { value: cloudTexture }
-            },
-            vertexShader: vertexShaderSource,
-            fragmentShader: fragmentShaderSource
+        // Create globe with procedural texture
+        const geometry = new THREE.SphereGeometry(1, 64, 64);
+        
+        // Create canvas texture for the globe
+        const canvas = document.createElement('canvas');
+        canvas.width = 2048;
+        canvas.height = 1024;
+        const ctx = canvas.getContext('2d');
+        
+        // Draw oceans
+        ctx.fillStyle = '#1a4d7a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw continents (simplified)
+        ctx.fillStyle = '#2d5a2d';
+        ctx.fillRect(50, 200, 400, 300);    // North America
+        ctx.fillRect(600, 250, 300, 250);   // Europe/Africa
+        ctx.fillRect(1000, 300, 400, 200);  // Asia
+        
+        // Add some variation
+        ctx.fillStyle = '#3d6a3d';
+        ctx.fillRect(150, 600, 200, 150);   // South America
+        ctx.fillRect(1200, 600, 250, 150);  // Australia
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.MeshPhongMaterial({ 
+            map: texture,
+            shininess: 5
         });
 
-        const globeMesh = new Mesh(globeGeometry, globeMaterial);
-        scene.add(globeMesh);
+        const globe = new THREE.Mesh(geometry, material);
+        scene.add(globe);
 
-        // Optimize rendering
-        function render() {
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-            // Update globe rotation
-            globeMesh.rotation.y -= 0.01;
-            renderer.render(scene, camera);
-            requestAnimationFrame(render);
+        // Add atmosphere glow
+        const atmosphereGeometry = new THREE.SphereGeometry(1.02, 64, 64);
+        const atmosphereMaterial = new THREE.MeshBasicMaterial({
+            color: 0x87ceeb,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.BackSide
+        });
+        const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        scene.add(atmosphere);
+
+        // Lighting
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+        sunLight.position.set(5, 3, 5);
+        scene.add(sunLight);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        // Stars background
+        const starsGeometry = new THREE.BufferGeometry();
+        const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.02 });
+        const starsVertices = [];
+        for (let i = 0; i < 1000; i++) {
+            const x = (Math.random() - 0.5) * 200;
+            const y = (Math.random() - 0.5) * 200;
+            const z = (Math.random() - 0.5) * 200;
+            starsVertices.push(x, y, z);
         }
-        render();
+        starsGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(starsVertices), 3));
+        const stars = new THREE.Points(starsGeometry, starsMaterial);
+        scene.add(stars);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            globe.rotation.y += 0.0005;
+            atmosphere.rotation.y -= 0.0003;
+            renderer.render(scene, camera);
+        }
+        animate();
     </script>
 </body>
 </html>
