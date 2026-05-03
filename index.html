@@ -3,37 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello World Globe</title>
+    <title>Realistic Globe</title>
     <style>
         body { margin: 0; }
         canvas { display: block; }
     </style>
 </head>
 <body>
+    <canvas id="globeCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById('globeCanvas');
+        const gl = canvas.getContext('webgl');
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+        // Adjust the canvas size
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-    const geometry = new THREE.SphereGeometry(5, 32, 32);
-    const texture = new THREE.TextureLoader().load('https://threejs.org/examples/textures/earth_atmos_2048.jpg');
-    const material = new THREE.MeshBasicMaterial({ map: texture });
-    const globe = new THREE.Mesh(geometry, material);
-    scene.add(globe);
+        // Set up lighting and material properties
+        const lightColor = [1.0, 1.0, 1.0]; // White light
+        const ambientLight = [0.1, 0.1, 0.1]; // Low ambient light
 
-    camera.position.z = 10;
+        // Load textures for the globe
+        const textureLoader = new TextureLoader();
+        const earthTexture = textureLoader.load('path/to/earth_texture.jpg');
+        const normalMap = textureLoader.load('path/to/normal_map.jpg');
+        const specularMap = textureLoader.load('path/to/specular_map.jpg');
+        const cloudTexture = textureLoader.load('path/to/cloud_texture.png');
 
-    function animate() {
-        requestAnimationFrame(animate);
-        globe.rotation.y += 0.01;
-        renderer.render(scene, camera);
-    }
-    animate();
-</script>
+        // Create globe geometry
+        const globeGeometry = new SphereGeometry(1, 64, 64);
+        const globeMaterial = new ShaderMaterial({
+            uniforms: {
+                lightColor: { value: new Vector3(...lightColor) },
+                ambientLight: { value: new Vector3(...ambientLight) },
+                earthTexture: { value: earthTexture },
+                normalMap: { value: normalMap },
+                specularMap: { value: specularMap },
+                cloudTexture: { value: cloudTexture }
+            },
+            vertexShader: vertexShaderSource,
+            fragmentShader: fragmentShaderSource
+        });
 
+        const globeMesh = new Mesh(globeGeometry, globeMaterial);
+        scene.add(globeMesh);
+
+        // Optimize rendering
+        function render() {
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            // Update globe rotation
+            globeMesh.rotation.y += 0.01;
+            renderer.render(scene, camera);
+            requestAnimationFrame(render);
+        }
+        render();
+    </script>
 </body>
 </html>
